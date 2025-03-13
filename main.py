@@ -73,7 +73,7 @@ def login():
 
         customer_id = get_customer_id(username, password)
         
-        open_home()
+        open_home(customer_id)
 
     elif get_login_details_staff(username, password):
         messagebox.showinfo("Login Successful", "Admin Login Successful!")
@@ -82,7 +82,7 @@ def login():
         messagebox.showerror("Login Error", "Invalid username or password")
 
 # Function to open homepage
-def open_home():
+def open_home(customer_id):
 
     # Get customer name
     customer_name = get_customer_name(customer_id)
@@ -380,6 +380,7 @@ def create_account_window():
 
     # Function to handle account creation
     def create_new_account():
+        # Get user input from the form fields
         dob = entry_dob.get()
         first = entry_first.get()
         surname = entry_second.get()
@@ -387,47 +388,31 @@ def create_account_window():
         password = entry_pass.get()
         email = entry_email.get()
         phone = entry_phone.get()
-
-        # Validation patterns
-        dob_pattern = r'^\d{2}/\d{2}/\d{4}$'
-        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        phone_pattern = r'^\d{11}$'  
-
-        # Validate fields
-
-        # Check if all fields are filled
-        if not dob or not first or not surname or not username or not password or not email or not phone:
-            messagebox.showinfo('Error', "All fields must be filled.")
+        
+        # Validate inputs (add your validation logic here)
+        if not all([dob, first, surname, username, password, email, phone]):
+            messagebox.showerror("Error", "All fields are required")
             return
         
-        if not first.isalpha():
-            messagebox.showinfo('Error', "First name must contain only alphabetic characters.")
-            return
-
-        if not surname.isalpha():
-            messagebox.showinfo('Error', "Surname must contain only alphabetic characters.")
-            return
+        # Try to create the account
+        success = create_account(dob, first, surname, username, password, email, phone)
         
-        if not re.match(dob_pattern, dob):
-            messagebox.showinfo('Error', "Date of Birth must be in the format DD/MM/YYYY.")
-            return
-
-        if not re.match(email_pattern, email):
-            messagebox.showinfo('Error', "Invalid email format.")
-            return
-
-        if not re.match(phone_pattern, phone):
-            messagebox.showinfo('Error', "Phone number must contain only digits 11 characters long.")
-            return
-
-        # Call create_account() from data_access.py
-        if create_account(dob, first, surname, username, password, email, phone):
+        if success:
             messagebox.showinfo("Success", "Account created successfully!")
-            open_home()
+            new_window.destroy()  # Close the registration window
+            
+            # Get the customer_id for the newly created account
+            try:
+                # Retrieve the customer ID using the login credentials
+                new_customer_id = get_customer_id(username, password)
+                # Open the home screen with the new customer ID
+                open_home(new_customer_id)
+            except Exception as e:
+                messagebox.showerror("Error", f"Login failed after account creation: {str(e)}")
         else:
-            messagebox.showerror("Error", "Failed to create account. Username may already exist.")
+            messagebox.showerror("Error", "Username already exists or there was an error creating the account.")
 
-       
+
 
 # Function to open staff account creation window
 def createAccountWindowStaff():
@@ -537,6 +522,7 @@ def createAccountWindowStaff():
 # Function to open a window to manage orders
 def manage_orders_window():
 
+    # Function to create a confirmation window
     def create_confirmation_window(major, gbp_value, order_type, old_balance):
         confirm_win = tk.Toplevel()
         confirm_win.title(f"{major[:6]} Order Confirmation")
@@ -609,11 +595,11 @@ def manage_orders_window():
                                         foreground="green")
                 success_label.pack(pady=5)
                 
-                # Schedule cleanup and refresh after 2 seconds
+                # Refresh after 2 seconds
                 def refresh_orders():
                     confirm_win.destroy()  # Close confirmation window
                     new_window.destroy()   # Close current orders window
-                    manage_orders_window() # Reopen fresh orders window
+                    manage_orders_window() # Reopen new orders window
                 
                 confirm_win.after(2000, refresh_orders)
 
@@ -790,7 +776,7 @@ def manage_orders_window():
     open_trades_button = ttk.Button(nav_frame, text="Open Trades", command=lambda: [new_window.destroy(), current_orders_window()])
     open_trades_button.pack(side='left')
     
-    close_button = ttk.Button(nav_frame, text="← Back", command=lambda: [new_window.destroy(), open_home()])
+    close_button = ttk.Button(nav_frame, text="← Back", command=lambda: [new_window.destroy(), open_home(customer_id)])
     close_button.pack(side='right')
 
     # Event bindings
@@ -856,7 +842,7 @@ def balance_window():
     payments_btn.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky='ew')
 
     # Close button
-    close_btn = ttk.Button(main_frame, text="← Back ", command=lambda: (new_window.destroy(), open_home()), width=15)
+    close_btn = ttk.Button(main_frame, text="← Back ", command=lambda: (new_window.destroy(), open_home(customer_id)), width=15)
     close_btn.pack(pady=(10, 0))
 
     # Configure grid columns
@@ -1033,7 +1019,7 @@ def withdraw_money():
 
     centre_window(new_window, 400, 400) 
 
-
+# Function to submit money withdraw
 def submit_withdraw_money(entry_amount, new_window):
     # Fetch the amount entered by the user
     input_value = entry_amount.get().strip()
@@ -2052,7 +2038,7 @@ def history_window():
     export_button.pack(pady=10)
 
     # Button to close the window
-    close_button = ttk.Button(new_window, text="← Back", command=lambda: (new_window.destroy(), open_home()), width=11)
+    close_button = ttk.Button(new_window, text="← Back", command=lambda: (new_window.destroy(), open_home(customer_id)), width=11)
     close_button.pack(pady=10)
 
     # Run the Tkinter main loop for the new window

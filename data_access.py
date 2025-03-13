@@ -457,21 +457,28 @@ def add_billing_address(building_number, line1, line2, postcode):
 
 # Function to add a payment card
 def add_payment_card(cardholder_name, card_number, start_date, end_date, card_provider_id, billing_address_id, password):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
 
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+        # Generate salt and hash the CVV
+        salt = os.urandom(16).hex()
+        hashed_cvv = hashlib.sha256((salt + password).encode()).hexdigest()
 
-    cursor.execute('''
-    INSERT INTO payment_card (cardholder_name, card_number, start_date, end_date, card_provider_id, billing_address_id, password)
-    VALUES (?, ?, ?, ?, ?, ?, ?)''',
-    (cardholder_name, card_number, start_date, end_date, card_provider_id, billing_address_id, password))
+        cursor.execute('''
+        INSERT INTO payment_card (cardholder_name, card_number, start_date, end_date, card_provider_id, billing_address_id, password, salt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+        (cardholder_name, card_number, start_date, end_date, card_provider_id, billing_address_id, hashed_cvv, salt))
 
-    card_id = cursor.lastrowid
+        card_id = cursor.lastrowid
+        conn.commit()
+        return card_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
 
-    conn.commit()
-    conn.close()
-
-    return card_id
 
 # Function to link payment card to a customer
 def link_card_to_customer(payment_card_id, customer_id):
@@ -508,36 +515,63 @@ def get_customer_cards(customer_id):
 # Function to update cards after editing only
 def update_card(card_id, cardholder_name, card_number, start_date, end_date, card_provider, 
                 building_number, line1, line2, postcode, password):
-    
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
 
-    # Update card provider
-    cursor.execute("SELECT card_provider_id FROM card_provider WHERE card_provider_name = ?", (card_provider,))
-    provider_result = cursor.fetchone()
+        # 1. Handle Card Provider
+        cursor.execute("SELECT card_provider_id FROM card_provider WHERE card_provider_name = ?", (card_provider,))
+        provider_result = cursor.fetchone()
+        
+        if provider_result:
+            card_provider_id = provider_result[0]
+        else:
+            cursor.execute("INSERT INTO card_provider (card_provider_name) VALUES (?)", (card_provider,))
+            card_provider_id = cursor.lastrowid
 
-    if provider_result:
-        card_provider_id = provider_result[0]
-    else:
-        cursor.execute("INSERT INTO card_provider (card_provider_name) VALUES (?)", (card_provider,))
-        card_provider_id = cursor.lastrowid
+        # 2. Update Billing Address
+        cursor.execute('''
+        UPDATE billing_address
+        SET building_number = ?, billing_address_line_1 = ?, billing_address_line_2 = ?, billing_postcode = ?
+        WHERE billing_address_id = (
+            SELECT billing_address_id 
+            FROM payment_card 
+            WHERE payment_card_id = ?
+        )
+        ''', (building_number, line1, line2, postcode, card_id))
 
-    # Update billing address
-    cursor.execute('''
-    UPDATE billing_address
-    SET building_number = ?, billing_address_line_1 = ?, billing_address_line_2 = ?, billing_postcode = ?
-    WHERE billing_address_id = (SELECT billing_address_id FROM payment_card WHERE payment_card_id = ?)
-    ''', (building_number, line1, line2, postcode, card_id))
+        # Generate Salt and Hash CVV
+        salt = os.urandom(16).hex()
+        hashed_cvv = hashlib.sha256((salt + password).encode()).hexdigest()
 
-    # Update card details
-    cursor.execute('''
-    UPDATE payment_card
-    SET cardholder_name = ?, card_number = ?, start_date = ?, end_date = ?, card_provider_id = ?, password = ?
-    WHERE payment_card_id = ?
-    ''', (cardholder_name, card_number, start_date, end_date, card_provider_id, password, card_id))
+        #  Update Payment Card with Hashed CVV
+        cursor.execute('''
+        UPDATE payment_card
+        SET cardholder_name = ?,
+            card_number = ?,
+            start_date = ?,
+            end_date = ?,
+            card_provider_id = ?,
+            password = ?,
+            salt = ?
+        WHERE payment_card_id = ?
+        ''', (cardholder_name, card_number, start_date, end_date, card_provider_id, hashed_cvv, salt, card_id))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+        print("Card updated successfully with hashed CVV")
+
+    except sqlite3.Error as e:
+        if conn:
+            conn.rollback()
+        raise Exception(f"Database error: {str(e)}")
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        raise Exception(f"Error updating card: {str(e)}")
+    finally:
+        if conn:
+            conn.close()
 
 # function to retrive card id from db
 def get_card_id(cardholder_name):

@@ -111,6 +111,7 @@ def create_tables():
         card_provider_id INTEGER,
         billing_address_id INTEGER,
         password TEXT NOT NULL,
+        salt TEXT NOT NULL,  -- Added column
         FOREIGN KEY (card_provider_id) REFERENCES card_provider(card_provider_id),
         FOREIGN KEY (billing_address_id) REFERENCES billing_address(billing_address_id)
     );
