@@ -19,6 +19,7 @@ from tkinter import filedialog
 DB_PATH = "main.db"
 SETUP_SCRIPT = "db_setup.py"
 
+# Function to check if database exists already
 def database_exists():
     if not os.path.exists(DB_PATH):
         return False
@@ -26,7 +27,8 @@ def database_exists():
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        # Replace 'your_table_name' with an actual table that should be present after setup
+
+        # Try to find 2 tables that should be there
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='staff';")
         table_exists = cursor.fetchone() is not None
         conn.close()
@@ -35,6 +37,7 @@ def database_exists():
         print(f"SQLite error: {e}")
         return False
 
+# Function to only run the GUI if the databse access file is present
 def run_setup_script():
     if not os.path.exists(SETUP_SCRIPT):
         print(f"Setup script {SETUP_SCRIPT} not found.")
@@ -52,7 +55,7 @@ if not database_exists():
 else:
     print("Database already set up.")
 
-# Ignore warnigns for compatability with future versions of yfinance, use version 0.1.70
+# Ignore warnigns for compatability with future versions of yfinance
 warnings.filterwarnings("ignore", category=FutureWarning, module="yfinance")
 
 # Function to handle login
@@ -68,13 +71,16 @@ def login():
     if not username or not password:
         messagebox.showerror("Login Error", "All fields must be filled.")
         return
+    
+    # Retrieve customer login details
     if get_login_details(username, password):
         messagebox.showinfo("Login Successful", f"Welcome, {username}.")
 
         customer_id = get_customer_id(username, password)
         
-        open_home(customer_id)
+        open_home(customer_id) # Open the customers home
 
+    # Logic to log in as staff member
     elif get_login_details_staff(username, password):
         messagebox.showinfo("Login Successful", "Admin Login Successful!")
         open_home_staff()
@@ -126,7 +132,7 @@ def open_home(customer_id):
     close_button = ttk.Button(new_window, text="Logout", command=lambda: (new_window.destroy(), root.deiconify()), width=11)
     close_button.pack(padx=10, pady=20)
 
-    centre_window(new_window, 400, 600)
+    centre_window(new_window, 400, 600) # Centre window
 
 # function to open home page as an admin
 def open_home_staff():
@@ -198,13 +204,13 @@ def chart():
                 print(f"Error: Missing required columns - {missing_columns}")
                 return
 
-            # ✅ Convert to numeric and drop NaNs
+            # Convert to numeric and drop NaNs
             for col in required_columns:
                 data[col] = pd.to_numeric(data[col], errors="coerce")
 
             data.dropna(subset=required_columns, inplace=True)
 
-            # ✅ Plot the candlestick chart
+            # Plot the candlestick chart
             mpf.plot(
                 data, 
                 type='candle', 
@@ -538,6 +544,7 @@ def manage_orders_window():
         style.configure('Bold.TLabel', font=('Arial', 10, 'bold'))
         style.configure('Price.TLabel', font=('Arial', 10), foreground='#2c3e50')
 
+        # Fetch live data
         try:
             major_ticker = currency_pairs[major]
             forex_data_minute = yf.download(major_ticker, period='1d', interval='1m')
@@ -552,13 +559,13 @@ def manage_orders_window():
         time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Header
-        ttk.Label(main_frame, text="ORDER CONFIRMATION", 
-                font=('Arial', 12, 'bold'), anchor='center').pack(pady=(0, 15))
+        ttk.Label(main_frame, text="ORDER CONFIRMATION", font=('Arial', 12, 'bold'), anchor='center').pack(pady=(0, 15))
 
         # Details grid
         details_frame = ttk.Frame(main_frame)
         details_frame.pack(fill='x')
 
+        # Function to display details
         def create_detail_row(parent, label, value):
             row = ttk.Frame(parent)
             row.pack(fill='x', pady=3)
@@ -577,6 +584,7 @@ def manage_orders_window():
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill='x')
 
+        # Function to confirm a trade
         def confirm_action():
             try:
                 # Store the order in database
@@ -607,22 +615,11 @@ def manage_orders_window():
                 messagebox.showerror("Error", f"Failed to store order: {e}")
                 confirm_win.destroy()
 
-        ttk.Button(
-            button_frame, 
-            text="✓ Confirm", 
-            command=confirm_action,
-            width=12
-        ).pack(side='right', padx=5)
+        ttk.Button(button_frame,text="✓ Confirm", command=confirm_action, width=12).pack(side='right', padx=5)
 
-        ttk.Button(
-            button_frame, 
-            text="✗ Cancel", 
-            command=confirm_win.destroy,
-            width=12
-        ).pack(side='right')
+        ttk.Button(button_frame,text="✗ Cancel", command=confirm_win.destroy, width=12).pack(side='right')
 
-        ttk.Label(main_frame, text="Investor Centre Ltd", 
-                foreground='#95a5a6', font=('Arial', 8)).pack(side='bottom', pady=5)
+        ttk.Label(main_frame, text="Investor Centre Ltd", foreground='#95a5a6', font=('Arial', 8)).pack(side='bottom', pady=5)
 
     def handle_order(order_type):
         try:
@@ -1146,16 +1143,15 @@ def submit_add_money(entry_amount, new_window):
 
 
 # Function to open payment methods window
-import tkinter as tk
-from tkinter import ttk, messagebox
-import sv_ttk
-
 def payment_methods_window():
+
     # Function to load all the cards in db
     def load_cards():
+
         # Fetch all cards for the customer
         cards = get_customer_cards(customer_id) 
         for widget in card_frame.winfo_children():
+
             # Delete cards before adding them in to prevent duplicates
             widget.destroy()
 
@@ -1223,7 +1219,7 @@ def payment_methods_window():
 # Function to add card
 def add_card():
 
-    # Function to handle newd data
+    # Function to handle new data
 
     def submit_card():
         # Fetch user input
@@ -1357,6 +1353,7 @@ def add_card():
     entry_line2 = ttk.Entry(add_card_window, width=30)
     entry_line2.pack()
 
+    # Postcode
     tk.Label(add_card_window, text="Postcode:").pack(pady=5)
     entry_postcode = ttk.Entry(add_card_window, width=30)
     entry_postcode.pack()
@@ -1818,6 +1815,7 @@ def current_orders_window():
 
     new_window.mainloop()
 
+# Function to sidplay all open orders
 def all_current_orders_window():
     # Create the new window for current orders
     new_window = tk.Toplevel()
