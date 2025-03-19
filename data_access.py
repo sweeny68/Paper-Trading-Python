@@ -297,7 +297,7 @@ def fetch_customers():
 
 # Function to get exchange rates using API
 def get_exchange_rate(base, target):
-    url = f"https://api.exchangerate.host/convert?from={base}&to={target}&amount=1&access_key=e3d7c05b434ae06e82fdba7818df4b7e"
+    url = f"https://api.exchangerate.host/convert?from={base}&to={target}&amount=1&access_key=APIKEY"
     try:
         response = requests.get(url)
         response.raise_for_status()
