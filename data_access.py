@@ -4,6 +4,7 @@ import hashlib
 import os
 import csv
 from datetime import datetime
+import csv
 
 
 currency_pairs = {
@@ -235,7 +236,6 @@ def get_customer_name(customer_id):
         return customer_name
     else:
         raise ValueError("Invalid customer_id")
-
     
 # function to fetch orders for one customer
 def fetch_orders(customer_id):
@@ -693,7 +693,7 @@ def calculate_pl(order_id, closing_price, customer_id):
         # Step 4: Convert to GBP for non-GBP pairs
         if major != "GBP/USD" and major != "GBP/CHF":  # Check if the pair involves GBP
             # Get exchange rates to convert profit/loss into GBP
-            quote_currency = major[4:7]  # Extract the quote currency (e.g., USD or CHF)
+            quote_currency = major[4:7]  # Extract the quote currency (e.g. USD or CHF)
             rate_quote_to_gbp = get_exchange_rate(quote_currency, 'GBP')  # Fetch quote to GBP rate
 
             # Convert the P/L from the quote currency to GBP
@@ -736,11 +736,7 @@ def calculate_pl(order_id, closing_price, customer_id):
 
     return profit_loss_gbp
 
-
-# Add to imports
-import csv
-from datetime import datetime
-
+# Function to export data to csv
 def export_history_to_csv(customer_id=None, filename="trade_history.csv"):
     try:
         # Fetch data

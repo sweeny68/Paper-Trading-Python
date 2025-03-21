@@ -67,6 +67,9 @@ def login():
     username = entry_username.get()
     password = entry_password.get()
     
+    customer_id = get_customer_id(username, password)
+    customer_name = get_customer_name(customer_id)
+
     #Login Logic
     if not username or not password:
         messagebox.showerror("Login Error", "All fields must be filled.")
@@ -74,9 +77,7 @@ def login():
     
     # Retrieve customer login details
     if get_login_details(username, password):
-        messagebox.showinfo("Login Successful", f"Welcome, {username}.")
-
-        customer_id = get_customer_id(username, password)
+        messagebox.showinfo("Login Successful", f"Welcome, {customer_name}.")
         
         open_home(customer_id) # Open the customers home
 
@@ -103,7 +104,8 @@ def open_home(customer_id):
     new_window = tk.Toplevel(root)
     new_window.title("Welcome")
     new_window.geometry("400x600")
-    sv_ttk.set_theme("light") 
+    sv_ttk.set_theme("light")
+    new_window.resizable(False, False) 
     
     # Add content to the home page
     home_label = tk.Label(new_window, text='Home', font=("Helvetica", 20))
@@ -144,7 +146,8 @@ def open_home_staff():
     new_window = tk.Toplevel(root)
     new_window.title("Welcome")
     new_window.geometry("400x600")
-    sv_ttk.set_theme("light") 
+    sv_ttk.set_theme("light")
+    new_window.resizable(False, False)  
     
     # Add some content to the home page
     home_label = tk.Label(new_window, text='Home', font=("Helvetica", 20))
@@ -226,7 +229,6 @@ def chart():
         except Exception as e:
             print(f'Failed to plot Graph. If all fields are filled, then networking error or version error. {e}')
 
-
     # Function to save and plot settings
     def save_options():
         period = selected_period.get()
@@ -279,7 +281,8 @@ def chart():
     new_window = tk.Toplevel()
     new_window.title("Configure Chart")
     new_window.geometry('300x330')
-    sv_ttk.set_theme("light") # Set theme
+    sv_ttk.set_theme("light")
+    new_window.resizable(False, False)  
 
     # Variables to store selected options
     selected_period = tk.StringVar(value=period_options[0])
@@ -324,6 +327,7 @@ def create_account_window():
     new_window.title("Create Account")
     new_window.geometry('430x520')
     sv_ttk.set_theme("light") 
+    new_window.resizable(False, False)
 
     # Define padding and styles
     padding = {'padx': 15, 'pady': 10}
@@ -427,7 +431,8 @@ def createAccountWindowStaff():
     new_window = tk.Toplevel()
     new_window.title("Create Staff Account")
     new_window.geometry('430x520')
-    sv_ttk.set_theme("light") 
+    sv_ttk.set_theme("light")
+    new_window.resizable(False, False)   
 
     # Define padding and styles
     padding = {'padx': 15, 'pady': 10}
@@ -699,6 +704,7 @@ def manage_orders_window():
     new_window.title("Trade Manager")
     new_window.geometry('500x600')
     sv_ttk.set_theme("light")
+    new_window.resizable(False, False)  
     
     # Main container
     main_frame = ttk.Frame(new_window, padding=20, style='Trade.TFrame')
@@ -795,6 +801,7 @@ def balance_window():
     new_window.title("Account Balance")
     new_window.geometry('400x400')
     sv_ttk.set_theme("light")
+    new_window.resizable(False, False)  
     
     # Main container frame
     main_frame = ttk.Frame(new_window)
@@ -835,7 +842,7 @@ def balance_window():
     withdraw_btn = ttk.Button(buttons_frame, text="➖ Withdraw Funds", command=lambda: [withdraw_money(), new_window.destroy()], style='Withdraw.TButton', width=15)
     withdraw_btn.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
 
-    payments_btn = ttk.Button(buttons_frame, text="💳 Payment Methods", command=payment_methods_window, style='Payment.TButton', width=15)
+    payments_btn = ttk.Button(buttons_frame, text="💳 Payment Methods", command=lambda: [new_window.destroy(), payment_methods_window()], style='Payment.TButton', width=15)
     payments_btn.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky='ew')
 
     # Close button
@@ -860,7 +867,7 @@ def view_customers_window():
     new_window.title("View Customers")
     new_window.geometry('870x440')  # Initial size
     new_window.resizable(True, True)  # Allow window resizing
-    sv_ttk.set_theme("light")  # Set theme
+    sv_ttk.set_theme("light") 
 
     # Create a style for the Treeview
     style = ttk.Style()
@@ -951,6 +958,7 @@ def withdraw_money():
     new_window.title("Withdraw Money")
     new_window.geometry('400x400')
     sv_ttk.set_theme("light")
+    new_window.resizable(False, False)  
 
     # Main container frame
     main_frame = ttk.Frame(new_window)
@@ -1054,6 +1062,7 @@ def add_money():
     new_window.title("Add Money")
     new_window.geometry('400x400')
     sv_ttk.set_theme("light")
+    new_window.resizable(False, False)  
 
     # Main container frame
     main_frame = ttk.Frame(new_window)
@@ -1170,6 +1179,7 @@ def payment_methods_window():
     new_window.title("Payment Methods")
     new_window.geometry('400x400')
     sv_ttk.set_theme("light")  # Set theme 
+    new_window.resizable(False, False)  
 
     # Main container frame
     main_frame = ttk.Frame(new_window)
@@ -1205,7 +1215,7 @@ def payment_methods_window():
     delete_card_button = ttk.Button(buttons_frame, text="🗑️ Delete Card", command=lambda: [delete_card(), new_window.destroy()], style="Red.TButton")
     delete_card_button.grid(row=2, column=0, padx=5, pady=5, sticky='ew')
     
-    close_button = ttk.Button(buttons_frame, text="← Back", command=new_window.destroy, width=18)
+    close_button = ttk.Button(buttons_frame, text="← Back", command=lambda: [new_window.destroy(), balance_window()], width=18)
     close_button.grid(row=3, column=0, padx=5, pady=20, sticky='ew')
     
     # Configure grid columns
@@ -1314,6 +1324,7 @@ def add_card():
     add_card_window.geometry('400x740')
     sv_ttk.set_theme("light")
     centre_window(add_card_window, 400, 740) 
+    add_card_window.resizable(False, False)  
 
     # Cardholder name
     tk.Label(add_card_window, text="Cardholder Name:").pack(pady=5)
@@ -1478,6 +1489,7 @@ def edit_card():
     edit_card_window.geometry('420x800')
     sv_ttk.set_theme("light")
     centre_window(edit_card_window, 420, 800) 
+    edit_card_window.resizable(False, False)  
 
     # Card selector
     tk.Label(edit_card_window, text="Select Card:").pack(pady=5)
@@ -1579,6 +1591,7 @@ def delete_card():
     delete_card_window.title("Delete Card")
     delete_card_window.geometry('400x320')
     sv_ttk.set_theme("light")  # Set theme
+    delete_card_window.resizable(False, False)  
 
     # Main container frame
     main_frame = ttk.Frame(delete_card_window)
@@ -1635,6 +1648,7 @@ def open_live_window(customer_id):
     new_window.title("Live Price and P/L")
     new_window.geometry('400x250')
     centre_window(new_window, 400, 250)
+    new_window.resizable(False, False)  
     
     # Fetch current trades
     try:
@@ -1897,6 +1911,7 @@ def modify_orders_window():
     new_window.geometry('400x250')
     sv_ttk.set_theme("light") 
     centre_window(new_window, 400, 250) 
+    new_window.resizable(False, False)  
 
     # Fetch current orders
     try:
@@ -2163,6 +2178,7 @@ root = tk.Tk()
 root.title("Investor Centre LTD")
 root.geometry("600x400")
 sv_ttk.set_theme("light")
+root.resizable(False, False)  
 
 # Define a custom font
 custom_font = font.Font(family="Helvetica", size=28, weight="bold")
