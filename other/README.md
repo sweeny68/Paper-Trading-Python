@@ -1,16 +1,32 @@
-run 'pip install -r requirements.txt' in terminal to install all requirements
-run db_setup.py once to intialise the database, this does not have to be done again
-run main.py to use the system
-admin login:
-user: admin
-password: 123
+# Project Setup Guide
 
-## Setup Instructions
-This project requires an API key for ExchangeRate API.
-1. Sign up at [ExchangeRate Host](https://exchangerate.host/) and get your API key.
-2. Create a `config.json` file in the project root.
-3. Add the following content:
+## Installation Steps
 
-   {
-       "EXCHANGE_RATE_API_KEY": "your_api_key_here"
-   }
+1. **Install dependencies**  
+   Open your terminal and run:  
+
+   pip install -r requirements.txt
+
+2. **API Key Setup (Exchange Rate API)**
+
+This project requires an API key from ExchangeRate Host.
+
+    Sign up at ExchangeRate Host and obtain your API key.
+
+    Create a config.json file in the project root directory.
+
+    Add the following content (replace your_api_key_here with your actual API key):
+
+{
+    "EXCHANGE_RATE_API_KEY": "your_api_key_here"
+}
+
+3. **Start the Application**
+Run the main script:
+
+    python main.py
+
+**Admin Login Credentials**
+
+    Username: admin
+    Password: 123

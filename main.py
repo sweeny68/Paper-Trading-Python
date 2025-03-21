@@ -61,14 +61,18 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="yfinance")
 # Function to handle login
 def login():
 
-    global customer_id
+    global customer_id, staff_id
 
     # get username from entry
     username = entry_username.get()
     password = entry_password.get()
     
-    customer_id = get_customer_id(username, password)
-    customer_name = get_customer_name(customer_id)
+    try:
+        customer_id = get_customer_id(username, password)
+        customer_name = get_customer_name(customer_id)
+    except:
+        staff_id = get_staff_id(username, password)
+        staff_name = get_staff_name(staff_id)
 
     #Login Logic
     if not username or not password:
@@ -84,7 +88,7 @@ def login():
     # Logic to log in as staff member
     elif get_login_details_staff(username, password):
         messagebox.showinfo("Login Successful", "Admin Login Successful!")
-        open_home_staff()
+        open_home_staff(staff_id)
     else:
         messagebox.showerror("Login Error", "Invalid username or password")
 
@@ -137,7 +141,9 @@ def open_home(customer_id):
     centre_window(new_window, 400, 600) # Centre window
 
 # function to open home page as an admin
-def open_home_staff():
+def open_home_staff(staff_id):
+
+    staff_name = get_staff_name(staff_id)
 
     # Hide the main login window
     root.withdraw()
@@ -153,7 +159,7 @@ def open_home_staff():
     home_label = tk.Label(new_window, text='Home', font=("Helvetica", 20))
     home_label.pack(padx=10, pady=20)
 
-    welcome_label = tk.Label(new_window, text="Welcome to Investor Centre LTD!", font=("Helvetica", 14))
+    welcome_label = tk.Label(new_window, text=f"Welcome Admin: {staff_name}", font=("Helvetica", 14))
     welcome_label.pack(padx=10, pady=20)
 
      # Button to close the new window and bring back the login window
@@ -378,13 +384,19 @@ def create_account_window():
     entry_pass = ttk.Entry(new_window, show="*")  
     entry_pass.grid(row=7, column=1, **padding)
 
+    # Password reentry label and entry
+    reentry_label_pass = ttk.Label(new_window, text="Re-enter password:")
+    reentry_label_pass.grid(row=8, column=0, sticky="w", **padding)
+    reentry_pass = ttk.Entry(new_window, show="*")  
+    reentry_pass.grid(row=8, column=1, **padding)
+
     # Create account button
     create_button = ttk.Button(new_window, text="Create Account", command=lambda: [create_new_account()], width=12)
-    create_button.grid(row=8, column=1, columnspan=1, pady=(20, 10))
+    create_button.grid(row=9, column=1, columnspan=1, pady=(20, 10))
 
     # Button to close the window
     close_button = ttk.Button(new_window, text="← Back" , command=lambda: [new_window.destroy(), root.deiconify()], width=11)
-    close_button.grid(row=8, column=0, columnspan=1, pady=(20, 10))
+    close_button.grid(row=9, column=0, columnspan=1, pady=(20, 10))
 
     centre_window(new_window, 430, 520) 
 
@@ -398,10 +410,14 @@ def create_account_window():
         password = entry_pass.get()
         email = entry_email.get()
         phone = entry_phone.get()
+        reentry = reentry_pass.get()
         
         # Validate inputs (add your validation logic here)
         if not all([dob, first, surname, username, password, email, phone]):
-            messagebox.showerror("Error", "All fields are required")
+            messagebox.showerror("Error", "All fields are required.")
+            return
+        elif password != reentry:
+            messagebox.showerror("Error", 'Passwords do not match.')
             return
         
         # Try to create the account
@@ -483,13 +499,19 @@ def createAccountWindowStaff():
     entry_pass = ttk.Entry(new_window, show="*")  
     entry_pass.grid(row=7, column=1, **padding)
 
+    # Password reentry label and entry
+    reentry_label_pass = ttk.Label(new_window, text="Re-enter password:")
+    reentry_label_pass.grid(row=8, column=0, sticky="w", **padding)
+    reentry_pass = ttk.Entry(new_window, show="*")  
+    reentry_pass.grid(row=8, column=1, **padding)
+
     # Create account button
     create_button = ttk.Button(new_window, text="Create Account", command=lambda: create_new_account_staff(), width=12)
-    create_button.grid(row=8, column=1, columnspan=1, pady=(20, 10))
+    create_button.grid(row=9, column=1, columnspan=1, pady=(20, 10))
 
     # Button to close the window
-    close_button = ttk.Button(new_window, text="← Back" , command=lambda: [new_window.destroy(), open_home_staff()], width=11)
-    close_button.grid(row=8, column=0, columnspan=1, pady=(20, 10))
+    close_button = ttk.Button(new_window, text="← Back" , command=lambda: [new_window.destroy(), open_home_staff(staff_id)], width=11)
+    close_button.grid(row=9, column=0, columnspan=1, pady=(20, 10))
 
     centre_window(new_window, 430, 520) 
 
@@ -501,6 +523,7 @@ def createAccountWindowStaff():
         password = entry_pass.get()
         email = entry_email.get()
         phone = entry_phone.get()
+        reentry = reentry_pass.get()
 
         # Validation patterns
         dob_pattern = r'^\d{2}/\d{2}/\d{4}$'
@@ -520,15 +543,27 @@ def createAccountWindowStaff():
         if not re.match(phone_pattern, phone):
             messagebox.showerror("Error", "Phone number must be 11 digits.")
             return
-
-        # Call create_account_staff from data_access.py
-        if create_account_staff(dob, first, surname, username, password, email, phone):
-            messagebox.showinfo("Success", "Staff account created successfully!")
-            new_window.destroy()
+        elif password != reentry:
+            messagebox.showerror("Error", 'Passwords do not match.')
+            return
+        
+        # Try to create the account
+        success = create_account_staff(dob, first, surname, username, password, email, phone)
+        
+        if success:
+            messagebox.showinfo("Success", "Account created successfully!")
+            new_window.destroy()  # Close the registration window
+            
+            # Get the staff_id for the newly created account
+            try:
+                # Retrieve the staff ID using the login credentials
+                new_staff_id = get_staff_id(username, password)
+                # Open the home screen with the new customer ID
+                open_home_staff(new_staff_id)
+            except Exception as e:
+                messagebox.showerror("Error", f"Login failed after account creation: {str(e)}")
         else:
-            messagebox.showerror("Error", "Failed to create account. Username may already exist.")
-
-        open_home_staff()
+            messagebox.showerror("Error", "Username already exists or there was an error creating the account.")
 
 # Function to open a window to manage orders
 def manage_orders_window():
@@ -714,7 +749,7 @@ def manage_orders_window():
     header_frame = ttk.Frame(main_frame)
     header_frame.pack(fill='x', pady=(0, 20))
     
-    header_label = ttk.Label(header_frame, text="Trade Manager", font=("Helvetica", 20, "bold"))
+    header_label = ttk.Label(main_frame, text="Trade Manager", font=("Helvetica", 18, "bold"), foreground="#2c3e50")
     header_label.pack()
 
     # Balance Display
@@ -944,7 +979,7 @@ def view_customers_window():
         tree.insert("", tk.END, values=(customer[0], customer[2], customer[3], customer[4], customer[5], customer[6], round(customer[7], 2)), tags=(tag,))
 
     # Buttons
-    close_button = ttk.Button(new_window, text="← Back" , command=lambda: (new_window.destroy(), open_home_staff()), width=10)
+    close_button = ttk.Button(new_window, text="← Back" , command=lambda: (new_window.destroy(), open_home_staff(staff_id)), width=10)
     close_button.pack(padx=10, pady=10)
 
     centre_window(new_window, 870, 440) 
@@ -1896,7 +1931,7 @@ def all_current_orders_window():
     tree.pack(fill=tk.BOTH, expand=True)
 
     # Button to close the window
-    close_button = ttk.Button(new_window, text="← Back" , command=lambda: (new_window.destroy(), open_home_staff()), width=10)
+    close_button = ttk.Button(new_window, text="← Back" , command=lambda: (new_window.destroy(), open_home_staff(staff_id)), width=10)
     close_button.pack(pady=10)
 
     # Run the Tkinter main loop for the new window
@@ -2146,7 +2181,7 @@ def history_window_staff():
     export_button.pack(pady=10)
 
     # Button to close the window
-    close_button = ttk.Button(new_window, text="← Back" , command=lambda: (new_window.destroy(), open_home_staff()), width=10)
+    close_button = ttk.Button(new_window, text="← Back" , command=lambda: (new_window.destroy(), open_home_staff(staff_id)), width=10)
     close_button.pack(pady=10)
 
     # Run the Tkinter main loop for the new window

@@ -1,0 +1,6 @@
+config.json
+main.db
+__pycache__/
+*.docx
+.idea/
+.vscode/

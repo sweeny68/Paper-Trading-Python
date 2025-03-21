@@ -173,8 +173,32 @@ def get_customer_id(username, password):
             raise ValueError("Invalid username or password")  
     else:
         raise ValueError("Invalid username or password")  
+    
+# function to retreieve customer id
+def get_staff_id(username, password):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
 
-import sqlite3
+    # Retrieve the stored hash and salt for the given username
+    cursor.execute('''
+        SELECT staff_id, password, salt
+        FROM staff 
+        WHERE username = ?
+    ''', (username,))
+    result = cursor.fetchone()
+
+    if result:
+        staff_id, stored_hash, salt = result
+        # Hash the input password with the stored salt
+        input_hash = hashlib.sha256((salt + password).encode()).hexdigest()
+
+        # Compare the hashed input password with the stored hash
+        if input_hash == stored_hash:
+            return staff_id  # Return the staff_id if the password is correct
+        else:
+            raise ValueError("Invalid username or password")  
+    else:
+        raise ValueError("Invalid username or password")  
 
 # function to get customer balance
 def get_customer_balance(order_id):
@@ -246,6 +270,29 @@ def get_customer_name(customer_id):
         return customer_name
     else:
         raise ValueError("Invalid customer_id")
+    
+# function to get staff name
+def get_staff_name(staff_id):
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT first_name
+        FROM staff 
+        WHERE staff_id = ?
+    ''', (staff_id,)) 
+    
+    result = cursor.fetchone()
+
+    if result:
+    
+        customer_name = result[0]
+
+        return customer_name
+    else:
+        raise ValueError("Invalid staff_id")
+    
     
 # function to fetch orders for one customer
 def fetch_orders(customer_id):
