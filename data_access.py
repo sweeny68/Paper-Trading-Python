@@ -5,7 +5,17 @@ import os
 import csv
 from datetime import datetime
 import csv
+import json
 
+# Fetch API Keys
+
+try:
+    with open("config.json") as config_file:
+        config = json.load(config_file)
+        api_key = config.get("EXCHANGE_RATE_API_KEY")
+except FileNotFoundError:
+    print("Error: config.json file not found.")
+    api_key = None
 
 currency_pairs = {
     "EUR/USD": "EURUSD=X",
@@ -297,11 +307,14 @@ def fetch_customers():
 
 # Function to get exchange rates using API
 def get_exchange_rate(base, target):
-    url = f"https://api.exchangerate.host/convert?from={base}&to={target}&amount=1&access_key=APIKEY"
+    if not api_key:
+        print("Error: API key not found in config.json.")
+        return None
+    
+    url = f"https://api.exchangerate.host/convert?from={base}&to={target}&amount=1&access_key={api_key}"
     try:
         response = requests.get(url)
         response.raise_for_status()
-        print(f"Debug Info - Status Code: {response.status_code}, Response: {response.text}")
         data = response.json()
         return data.get('result', None)
     except requests.exceptions.RequestException as e:
