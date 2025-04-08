@@ -60,37 +60,37 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="yfinance")
 
 # Function to handle login
 def login():
-
     global customer_id, staff_id
 
     # get username from entry
     username = entry_username.get()
     password = entry_password.get()
-    
-    try:
-        customer_id = get_customer_id(username, password)
-        customer_name = get_customer_name(customer_id)
-    except:
-        staff_id = get_staff_id(username, password)
-        staff_name = get_staff_name(staff_id)
 
-    #Login Logic
+    # Check if fields are filled
     if not username or not password:
         messagebox.showerror("Login Error", "All fields must be filled.")
         return
-    
-    # Retrieve customer login details
-    if get_login_details(username, password):
-        messagebox.showinfo("Login Successful", f"Welcome, {customer_name}.")
-        
-        open_home(customer_id) # Open the customers home
 
-    # Logic to log in as staff member
-    elif get_login_details_staff(username, password):
-        messagebox.showinfo("Login Successful", "Admin Login Successful!")
-        open_home_staff(staff_id)
-    else:
-        messagebox.showerror("Login Error", "Invalid username or password")
+    # Check customer login
+    if get_login_details(username, password):
+        customer_id = get_customer_id(username, password)
+        if customer_id is not None:
+            customer_name = get_customer_name(customer_id)
+            messagebox.showinfo("Login Successful", f"Welcome, {customer_name}.")
+            open_home(customer_id)
+            return
+
+    # Check staff login
+    if get_login_details_staff(username, password):
+        staff_id = get_staff_id(username, password)
+        if staff_id is not None:
+            staff_name = get_staff_name(staff_id)
+            messagebox.showinfo("Login Successful", f"Welcome, {staff_name}.")
+            open_home_staff(staff_id)
+            return
+
+    # If neither customer nor staff
+    messagebox.showerror("Login Error", "Invalid username or password.")
 
 # Function to open homepage
 def open_home(customer_id):
@@ -188,38 +188,49 @@ def open_home_staff(staff_id):
 
     centre_window(new_window, 400, 600)
 
-# Function for chart button to open chart configurer
 def chart():
+    
+    # Helper function to validate period-interval combinations
+    def is_valid_combination(period, interval):
+        short_periods = ['1d', '5d', '1mo']
+        medium_periods = ['3mo', '6mo']
+        long_periods = ['1y', '2y', '5y', '10y', 'ytd', 'max']
 
-    #Function to plot graphs
+        if interval == '1m' and period not in ['1d', '5d']:
+            return False
+        if interval in ['5m', '15m', '30m', '60m', '1h'] and period not in short_periods + medium_periods:
+            return False
+        if interval in ['5d'] and period in ['1d', '5d']:
+            return False
+        return True
 
+    # Function to plot graphs
     def plot_graph(major_ticker, timePeriod, timeInterval, major):
         # Destroy config window
         new_window.destroy()
 
         try:
-            #Download yfinance data
+            # Download yfinance data
             data = yf.download(major_ticker, period=timePeriod, interval=timeInterval)
             data.index.name = 'Date'
 
-            #Rename columns (assuming order follows Open, High, Low, Close, Volume)
-            column_names = ["Open", "High", "Low", "Close" , "Volume"]
-            data.columns = column_names[:len(data.columns)]  # Rename based on available columns
+            # Rename columns
+            column_names = ["Open", "High", "Low", "Close", "Volume"]
+            data.columns = column_names[:len(data.columns)]
 
-            #Check if required columns exist
+            # Check required columns
             required_columns = ["Open", "High", "Low", "Close", "Volume"]
             missing_columns = [col for col in required_columns if col not in data.columns]
             if missing_columns:
                 print(f"Error: Missing required columns - {missing_columns}")
                 return
 
-            # Convert to numeric and drop NaNs
+            # Clean data
             for col in required_columns:
                 data[col] = pd.to_numeric(data[col], errors="coerce")
-
             data.dropna(subset=required_columns, inplace=True)
 
-            # Plot the candlestick chart
+            # Plot candlestick chart
             mpf.plot(
                 data, 
                 type='candle', 
@@ -233,98 +244,91 @@ def chart():
             )
 
         except Exception as e:
-            print(f'Failed to plot Graph. If all fields are filled, then networking error or version error. {e}')
+            messagebox.showerror('Chart Error', 'The requested range or interval is invalid or not available for this currency pair.')
 
     # Function to save and plot settings
     def save_options():
         period = selected_period.get()
         interval = selected_interval.get()
-        major =  selected_major.get()
-        major_ticker = currency_pairs[major]   # get ticker value for calculations
+        major = selected_major.get()
+        major_ticker = currency_pairs[major]
+
         print(f"Selected Pair: {major}")
         print(f"Selected Period: {period}")
         print(f"Selected Interval: {interval}")
-        print(f'Ticker value for downlaod: {major_ticker}')
+        print(f'Ticker value for download: {major_ticker}')
 
-        # Validate all selecions are made
+        # Validate selections
         if not period or not interval or not major:
             tk.messagebox.showerror("Input Error", "Please make sure all selections are made.")
             return
 
-        # Ensure the period is valid 
         if period not in period_options:
-            tk.messagebox.showerror("Input Error", f"Invalid Period '{period}'. Please make a valid selection.")
-            return
-    
-        # Ensure interval is valid
-        if interval not in interval_options:
-            tk.messagebox.showerror("Input Error", f"Invalid Interval '{interval}'. Please make a valid selection.")
-            return
-    
-        # Ensure currency pair is valid
-        if major not in major_options:
-            tk.messagebox.showerror("Input Error", f"Invalid Currency Pair '{major}'. Please make a valid selection.")
+            tk.messagebox.showerror("Input Error", f"Invalid Period '{period}'. Please select a valid one.")
             return
 
-        # Call plot graph function
+        if interval not in interval_options:
+            tk.messagebox.showerror("Input Error", f"Invalid Interval '{interval}'. Please select a valid one.")
+            return
+
+        if major not in major_options:
+            tk.messagebox.showerror("Input Error", f"Invalid Currency Pair '{major}'.")
+            return
+
+        # Check for valid period-interval combinations
+        if not is_valid_combination(period, interval):
+            tk.messagebox.showerror("Invalid Range", f"The combination of Period '{period}' and Interval '{interval}' is not supported.")
+            return
+
+        # Call plot function
         plot_graph(major_ticker, period, interval, major)
 
     # Style
     custom_style = mpf.make_mpf_style(
-        base_mpl_style='seaborn-v0_8-white',  
+        base_mpl_style='seaborn-v0_8-white',
         marketcolors=mpf.make_marketcolors(
-            up='blue', down='black', wick={'up':'blue', 'down':'black'}, edge={'up':'blue', 'down':'black'}, volume={'up':'blue', 'down':'black'}),
-        rc={'font.size': 12},  
-        y_on_right=True   
+            up='blue', down='black', 
+            wick={'up': 'blue', 'down': 'black'}, 
+            edge={'up': 'blue', 'down': 'black'}, 
+            volume={'up': 'blue', 'down': 'black'}
+        ),
+        rc={'font.size': 12},
+        y_on_right=True
     )
 
-    # Define options
+    # Options
     period_options = ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max']
     interval_options = ['1m', '5m', '15m', '30m', '60m', '1h', '1d', '5d']
     major_options = list(currency_pairs.keys())
 
-    # Create the main window
+    # Window setup
     new_window = tk.Toplevel()
     new_window.title("Configure Chart")
     new_window.geometry('300x330')
     sv_ttk.set_theme("light")
-    new_window.resizable(False, False)  
+    new_window.resizable(False, False)
 
-    # Variables to store selected options
+    # Dropdown variables
     selected_period = tk.StringVar(value=period_options[0])
     selected_interval = tk.StringVar(value=interval_options[1])
     selected_major = tk.StringVar(value=major_options[0])
 
-    # Create dropdown for major options
-    major_label = tk.Label(new_window, text="Select Pair:")
-    major_label.pack(pady=5)
+    # Dropdown widgets
+    tk.Label(new_window, text="Select Pair:").pack(pady=5)
+    ttk.Combobox(new_window, textvariable=selected_major, values=major_options).pack(pady=5)
 
-    period_dropdown = ttk.Combobox(new_window, textvariable=selected_major, values=major_options)
-    period_dropdown.pack(pady=5)
+    tk.Label(new_window, text="Select Period:").pack(pady=5)
+    ttk.Combobox(new_window, textvariable=selected_period, values=period_options).pack(pady=5)
 
-    # Create dropdown for period options
-    period_label = tk.Label(new_window, text="Select Period:")
-    period_label.pack(pady=5)
+    tk.Label(new_window, text="Select Interval:").pack(pady=5)
+    ttk.Combobox(new_window, textvariable=selected_interval, values=interval_options).pack(pady=5)
 
-    period_dropdown = ttk.Combobox(new_window, textvariable=selected_period, values=period_options)
-    period_dropdown.pack(pady=5)
-
-    # Create dropdown for interval options
-    interval_label = tk.Label(new_window, text="Select Interval:")
-    interval_label.pack(pady=5)
-
-    interval_dropdown = ttk.Combobox(new_window, textvariable=selected_interval, values=interval_options)
-    interval_dropdown.pack(pady=5)
-
-    # Create button to save options
-    save_button = ttk.Button(new_window, text="Save & Plot", command=save_options, width=10)
-    save_button.pack(pady=10)
-
-    # Button to close the window
-    close_button = ttk.Button(new_window, text="← Back" , command=new_window.destroy, width=10)
-    close_button.pack(pady=10)
+    # Buttons
+    ttk.Button(new_window, text="Save & Plot", command=save_options, width=10).pack(pady=10)
+    ttk.Button(new_window, text="← Back", command=new_window.destroy, width=10).pack(pady=10)
 
     centre_window(new_window, 300, 330)
+
 
 # Function to bring up account creation window
 def create_account_window():

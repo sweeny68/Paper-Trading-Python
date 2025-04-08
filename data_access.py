@@ -6,6 +6,7 @@ import csv
 from datetime import datetime
 import csv
 import json
+from tkinter import messagebox
 
 # Fetch API Keys
 
@@ -170,9 +171,9 @@ def get_customer_id(username, password):
         if input_hash == stored_hash:
             return customer_id  # Return the customer_id if the password is correct
         else:
-            raise ValueError("Invalid username or password")  
+            return
     else:
-        raise ValueError("Invalid username or password")  
+        return
     
 # function to retreieve customer id
 def get_staff_id(username, password):
@@ -196,9 +197,9 @@ def get_staff_id(username, password):
         if input_hash == stored_hash:
             return staff_id  # Return the staff_id if the password is correct
         else:
-            raise ValueError("Invalid username or password")  
+            return
     else:
-        raise ValueError("Invalid username or password")  
+       return
 
 # function to get customer balance
 def get_customer_balance(order_id):
@@ -269,7 +270,7 @@ def get_customer_name(customer_id):
 
         return customer_name
     else:
-        raise ValueError("Invalid customer_id")
+        return
     
 # function to get staff name
 def get_staff_name(staff_id):
@@ -291,7 +292,7 @@ def get_staff_name(staff_id):
 
         return customer_name
     else:
-        raise ValueError("Invalid staff_id")
+        return
     
     
 # function to fetch orders for one customer
