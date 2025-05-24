@@ -15,6 +15,7 @@ import sqlite3
 import subprocess
 import sys
 from tkinter import filedialog
+from dateutil.relativedelta import relativedelta  
 
 DB_PATH = "main.db"
 SETUP_SCRIPT = "db_setup.py"
@@ -55,7 +56,7 @@ if not database_exists():
 else:
     print("Database already set up.")
 
-# Ignore warnigns for compatability with future versions of yfinance
+# Ignore warnings for compatability with future versions of yfinance
 warnings.filterwarnings("ignore", category=FutureWarning, module="yfinance")
 
 # Function to handle login
@@ -406,6 +407,12 @@ def create_account_window():
 
     # Function to handle account creation
     def create_new_account():
+
+        # Validation patterns
+        dob_pattern = r'^\d{2}/\d{2}/\d{4}$'
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        phone_pattern = r'^\d{11}$'
+
         # Get user input from the form fields
         dob = entry_dob.get()
         first = entry_first.get()
@@ -417,8 +424,17 @@ def create_account_window():
         reentry = reentry_pass.get()
         
         # Validate inputs (add your validation logic here)
-        if not all([dob, first, surname, username, password, email, phone]):
-            messagebox.showerror("Error", "All fields are required.")
+        if not dob or not first or not surname or not username or not password or not email or not phone:
+                messagebox.showerror("Error", "All fields must be filled.")
+                return
+        if not re.match(dob_pattern, dob):
+            messagebox.showerror("Error", "Date of Birth must be in DD/MM/YYYY format.")
+            return
+        if not re.match(email_pattern, email):
+            messagebox.showerror("Error", "Invalid email format.")
+            return
+        if not re.match(phone_pattern, phone):
+            messagebox.showerror("Error", "Phone number must be 11 digits.")
             return
         elif password != reentry:
             messagebox.showerror("Error", 'Passwords do not match.')
@@ -429,18 +445,16 @@ def create_account_window():
         
         if success:
             messagebox.showinfo("Success", "Account created successfully!")
-            new_window.destroy()  # Close the registration window
+            new_window.destroy()
             
-            # Get the customer_id for the newly created account
-            try:
-                # Retrieve the customer ID using the login credentials
-                new_customer_id = get_customer_id(username, password)
-                # Open the home screen with the new customer ID
-                open_home(new_customer_id)
-            except Exception as e:
-                messagebox.showerror("Error", f"Login failed after account creation: {str(e)}")
-        else:
-            messagebox.showerror("Error", "Username already exists or there was an error creating the account.")
+            # Get customer_id using the provided username/password from the form
+            global customer_id  # Declare global
+            customer_id = get_customer_id(username, password)  # Pass credentials
+            
+            if customer_id:
+                open_home(customer_id)
+            else:
+                messagebox.showerror("Error", "Auto-login failed after account creation")
 
 
 
@@ -832,6 +846,9 @@ def manage_orders_window():
 
 # Function to open balance window
 def balance_window():
+
+    global customer_id
+
     # Retrieve customer balance
     customer_balance = get_customer_balance_display(customer_id)
 
@@ -1014,6 +1031,7 @@ def withdraw_money():
     if not cards:
         messagebox.showerror("Error", "No cards found for this customer.")
         new_window.destroy()
+        balance_window()
         return
     
     if customer_balance <= 0:
@@ -1065,6 +1083,9 @@ def withdraw_money():
 
 # Function to submit money withdraw
 def submit_withdraw_money(entry_amount, new_window):
+
+    balance = get_customer_balance_display(customer_id)
+
     # Fetch the amount entered by the user
     input_value = entry_amount.get().strip()
 
@@ -1079,6 +1100,10 @@ def submit_withdraw_money(entry_amount, new_window):
     # Validate amount
     if amount <= 0:
         messagebox.showerror("Input Error", "Amount must be greater than 0.")
+        return
+
+    elif amount >= balance:
+        messagebox.showerror("Input Error", "Insufficient funds.")
         return
 
     # Update the balance
@@ -1116,6 +1141,7 @@ def add_money():
     if not cards:
         messagebox.showerror("Error", "No cards found for this customer.")
         new_window.destroy()
+        balance_window()
         return
 
     # Card selection frame
@@ -1328,9 +1354,20 @@ def add_card():
             tk.messagebox.showerror("Input Error", "Postcode is not valid! Must match format like BT440AY.")
             return
 
-        # Validate Password (at least 8 characters)
-        if len(password) < 3:
-            tk.messagebox.showerror("Input Error", "Password must be at least 8 characters long!")
+        # Validate Password (CVV) - exactly 3 digits
+        if len(password) != 3 or not password.isdigit():  # Modified
+            tk.messagebox.showerror("Input Error", "CVV must be exactly 3 digits!")
+            return
+
+        # Validate Expiry Date is in the future - New validation
+        try:
+            expiry_month, expiry_year = map(int, end_date.split('/'))
+            expiry_date = datetime(2000 + expiry_year, expiry_month, 1) + relativedelta(day=31)
+            if expiry_date < datetime.now():
+                tk.messagebox.showerror("Input Error", "Card has expired!")
+                return
+        except ValueError:
+            tk.messagebox.showerror("Input Error", "Invalid expiration date format!")
             return
 
         try:
@@ -1434,6 +1471,7 @@ def edit_card():
 
     if not cards:
         tk.messagebox.showerror("No Cards", "You have no cards to edit.")
+        payment_methods_window()
         return
 
     # Function to handle the new data
@@ -1502,9 +1540,20 @@ def edit_card():
             tk.messagebox.showerror("Input Error", "Postcode is not valid! Must match format like BT440AY.")
             return
 
-        # Validate Password (at least 3 characters)
-        if len(password) < 3:
-            tk.messagebox.showerror("Input Error", "Password must be at least 3 characters long!")
+        # Validate Password (CVV) - exactly 3 digits
+        if len(password) != 3 or not password.isdigit():  # Modified
+            tk.messagebox.showerror("Input Error", "CVV must be exactly 3 digits!")
+            return
+
+        # Validate Expiry Date is in the future - New validation
+        try:
+            expiry_month, expiry_year = map(int, end_date.split('/'))
+            expiry_date = datetime(2000 + expiry_year, expiry_month, 1) + relativedelta(day=31)
+            if expiry_date < datetime.now():
+                tk.messagebox.showerror("Input Error", "Card has expired!")
+                return
+        except ValueError:
+            tk.messagebox.showerror("Input Error", "Invalid expiration date format!")
             return
 
         try:
@@ -1603,6 +1652,7 @@ def delete_card():
 
     if not cards:
         messagebox.showerror("No Cards", "You have no cards to delete.")
+        payment_methods_window()
         return
 
     # Function to delete card after confirmation
@@ -1979,7 +2029,7 @@ def modify_orders_window():
     order_dropdown['values'] = list(orders_dict.keys())
     order_dropdown.pack(pady=10)
 
-    # Function to work alongside close_trade() in data_access.py to help close tardes and store data in database
+    # Function to work alongside close_trade() in data_access.py to help close trades and store data in database
     def close_trade_handler():
 
         global order_id
@@ -2212,10 +2262,16 @@ def centre_window(root, width, height):
     position_right = int(screen_width / 2 - width / 2)
     root.geometry(f'{width}x{height}+{position_right}+{position_top}')
 
+def toggle_password_visibility():
+    if show_password_var.get():
+        entry_password.config(show='')
+    else:
+        entry_password.config(show='*')
+
 # Create the main window
 root = tk.Tk()
 root.title("Investor Centre LTD")
-root.geometry("600x400")
+root.geometry("600x450")  
 sv_ttk.set_theme("light")
 root.resizable(False, False)  
 
@@ -2230,6 +2286,7 @@ root.rowconfigure(0, weight=1)
 root.rowconfigure(1, weight=1)
 root.rowconfigure(2, weight=1)
 root.rowconfigure(3, weight=1)
+root.rowconfigure(4, weight=1)
 
 # Title page
 title_label = tk.Label(root, text='Investor Centre LTD', font=custom_font, padx=20, pady=20)
@@ -2249,15 +2306,20 @@ label_password.grid(row=2, column=0, sticky="e", pady=10, padx=5)
 entry_password = tk.Entry(root, show="*")
 entry_password.grid(row=2, column=1, sticky="w", pady=10, padx=5)
 
+# Show Password Checkbox
+show_password_var = tk.BooleanVar()
+show_password_check = ttk.Checkbutton(root, text="Show Password", variable=show_password_var, command=toggle_password_visibility)
+show_password_check.grid(row=3, column=0, columnspan=3, pady=5)
+
 # Login button
 login_button = ttk.Button(root, text="Login", command=login)
-login_button.grid(row=3, column=2, pady=20, padx=5, sticky="w")
+login_button.grid(row=4, column=2, pady=20, padx=5, sticky="w")
 
 # Create account button
 create_button = ttk.Button(root, text="Create account", command=lambda: [create_account_window(), root.withdraw()])
-create_button.grid(row=3, column=0, pady=20, padx=5, sticky="e")
+create_button.grid(row=4, column=0, pady=20, padx=5, sticky="e")
 
-centre_window(root, 600, 400)
+centre_window(root, 600, 450) 
 
 # Run the application
 root.mainloop()
